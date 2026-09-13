@@ -1,20 +1,27 @@
 # Letterboxd Watchlist → Mubi filter
 
 A small local web app that loads your public [Letterboxd](https://letterboxd.com)
-watchlist and lets you filter it by streaming availability. It currently
-highlights films **available on Mubi** in a chosen region (default: UK), using
+watchlist and lets you filter it by streaming availability, using
 [TMDB](https://www.themoviedb.org)'s watch-provider data.
 
-The provider data is stored per-service, so extending to other streamers later
-is easy.
+Two dropdowns drive it:
+
+- **Service** — Mubi, Netflix, and every other streamer that carries a film on
+  your watchlist (the list is built dynamically from your own list). Plus
+  "Any service" (available on anything) and "All films" (no filter).
+- **Region** — any TMDB country; the ones where you actually have films
+  available are grouped at the top. Defaults to the `REGION` in your `.env`.
+
+TMDB returns every country's providers in a single request, so switching
+service or region is instant — no re-fetching.
 
 ## How it works
 
 1. Scrapes every page of your public watchlist for film slugs + titles.
 2. Resolves each film's TMDB id from its Letterboxd page.
-3. Asks TMDB for the poster + watch providers for your region (one call per film).
+3. Asks TMDB for the poster + watch providers **for every region** (one call per film).
 4. Caches everything in a local SQLite file (`cache.db`) so re-runs are instant.
-5. Serves a poster grid with a "Only on Mubi" toggle and a search box.
+5. Serves a poster grid with service + region dropdowns and a search box.
 
 ## Setup
 
@@ -48,5 +55,8 @@ this takes a couple of minutes). Later loads are instant from cache; hit
 
 - Only the **public** watchlist is read; no Letterboxd login is used.
 - Scraping is deliberately gentle (8 concurrent requests, real User-Agent).
-- Mubi is matched by TMDB provider id (11) or any provider whose name contains
-  "mubi", covering variants like "Mubi Amazon Channel".
+- "Available" means subscription (flatrate), free, or ad-supported — not
+  rent/buy. Provider variants (e.g. "MUBI" vs "MUBI Amazon Channel") appear as
+  separate services so you can choose precisely.
+- `REGION` / `DEFAULT_SERVICE_ID` only set the *initial* dropdown selection;
+  you can switch to any service/region in the UI without re-running anything.

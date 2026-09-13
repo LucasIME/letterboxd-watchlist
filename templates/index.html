@@ -6,7 +6,9 @@
   <title>{{ username }}'s watchlist · Mubi filter</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
 </head>
-<body data-tmdb-ok="{{ 'yes' if tmdb_ok else 'no' }}">
+<body data-tmdb-ok="{{ 'yes' if tmdb_ok else 'no' }}"
+      data-default-region="{{ default_region }}"
+      data-default-service="{{ default_service }}">
   <header>
     <div class="header-row">
       <h1><a href="https://letterboxd.com/{{ username }}/watchlist/" target="_blank" rel="noopener">{{ username }}</a>’s watchlist</h1>
@@ -14,9 +16,13 @@
     </div>
     <div class="controls">
       <input id="search" type="search" placeholder="Search titles…" autocomplete="off" />
-      <label class="toggle">
-        <input id="mubi-only" type="checkbox" />
-        <span>Only on Mubi ({{ region }})</span>
+      <label class="field">
+        <span>Service</span>
+        <select id="service"></select>
+      </label>
+      <label class="field">
+        <span>Region</span>
+        <select id="region"></select>
       </label>
       <span id="count" class="count"></span>
     </div>

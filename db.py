@@ -1,7 +1,8 @@
 """SQLite cache for watchlist films and their TMDB / provider data.
 
-One row per film (keyed by Letterboxd slug). Provider data is stored as JSON
-so the UI can filter by any service later, not just Mubi.
+One row per film (keyed by Letterboxd slug). Watch-provider data is stored as
+JSON for *all* regions at once, so filtering by region/service is a local
+operation needing no further TMDB calls.
 """
 import json
 import sqlite3
@@ -10,6 +11,9 @@ import time
 from contextlib import contextmanager
 
 from config import DB_PATH
+
+# Provider kinds that count as "available to watch on <service>".
+AVAILABLE_KINDS = ("flatrate", "free", "ads")
 
 _local = threading.local()
 
@@ -44,9 +48,7 @@ def init_db() -> None:
                 tmdb_id         INTEGER,
                 tmdb_type       TEXT,
                 poster_path     TEXT,
-                region          TEXT,
-                providers_json  TEXT,         -- {"flatrate":[{id,name}], "free":[...], ...}
-                on_mubi         INTEGER DEFAULT 0,
+                providers_json  TEXT,         -- {"GB": {"flatrate":[{id,name}]}, ...}
                 error           TEXT,
                 enriched_at     REAL
             )
@@ -106,26 +108,22 @@ def save_enrichment(
     tmdb_id=None,
     tmdb_type=None,
     poster_path=None,
-    region=None,
-    providers: dict | None = None,
-    on_mubi: bool = False,
+    providers_by_region: dict | None = None,
     error: str | None = None,
 ) -> None:
     with get_conn() as conn:
         conn.execute(
             """
             UPDATE films SET
-                tmdb_id=?, tmdb_type=?, poster_path=?, region=?,
-                providers_json=?, on_mubi=?, error=?, enriched_at=?
+                tmdb_id=?, tmdb_type=?, poster_path=?,
+                providers_json=?, error=?, enriched_at=?
             WHERE slug=?
             """,
             (
                 tmdb_id,
                 tmdb_type,
                 poster_path,
-                region,
-                json.dumps(providers) if providers is not None else None,
-                1 if on_mubi else 0,
+                json.dumps(providers_by_region) if providers_by_region is not None else None,
                 error,
                 time.time(),
                 slug,
@@ -142,10 +140,54 @@ def all_films():
     out = []
     for r in rows:
         d = dict(r)
-        d["providers"] = json.loads(d["providers_json"]) if d["providers_json"] else {}
+        d["providers_by_region"] = (
+            json.loads(d["providers_json"]) if d["providers_json"] else {}
+        )
         d.pop("providers_json", None)
-        d["on_mubi"] = bool(d["on_mubi"])
         out.append(d)
+    return out
+
+
+# --- filtering / options helpers -------------------------------------------
+
+def region_providers(film: dict, region: str) -> list[dict]:
+    """The [{id, name}] available (subscription/free/ads) for a film in a region."""
+    region_data = film.get("providers_by_region", {}).get(region, {})
+    seen, out = set(), []
+    for kind in AVAILABLE_KINDS:
+        for p in region_data.get(kind, []):
+            if p["id"] not in seen:
+                seen.add(p["id"])
+                out.append(p)
+    return out
+
+
+def film_available(film: dict, region: str, service_id) -> bool:
+    """True if the film is available in `region`; if service_id given, on that service."""
+    provs = region_providers(film, region)
+    if service_id in (None, "", "any"):
+        return bool(provs)
+    return any(p["id"] == int(service_id) for p in provs)
+
+
+def available_regions(films) -> set:
+    """Region codes where at least one watchlist film is available."""
+    regions = set()
+    for f in films:
+        for region, data in f.get("providers_by_region", {}).items():
+            if any(data.get(k) for k in AVAILABLE_KINDS):
+                regions.add(region)
+    return regions
+
+
+def services_for_region(films, region: str) -> list[dict]:
+    """Distinct [{id, name}] services offering any watchlist film in `region`."""
+    by_id = {}
+    for f in films:
+        for p in region_providers(f, region):
+            by_id.setdefault(p["id"], p["name"])
+    out = [{"id": pid, "name": name} for pid, name in by_id.items()]
+    out.sort(key=lambda s: s["name"].lower())
     return out
 
 
@@ -157,7 +199,4 @@ def counts() -> dict:
         enriched = conn.execute(
             "SELECT COUNT(*) FROM films WHERE in_watchlist=1 AND enriched_at IS NOT NULL"
         ).fetchone()[0]
-        on_mubi = conn.execute(
-            "SELECT COUNT(*) FROM films WHERE in_watchlist=1 AND on_mubi=1"
-        ).fetchone()[0]
-    return {"total": total, "enriched": enriched, "on_mubi": on_mubi}
+    return {"total": total, "enriched": enriched}

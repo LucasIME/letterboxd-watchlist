@@ -20,10 +20,9 @@ USER_AGENT = (
     "(KHTML, like Gecko) Chrome/120.0 Safari/537.36"
 )
 
-# TMDB provider identity for Mubi. We match on id OR name to catch variants
-# like "Mubi Amazon Channel".
-MUBI_PROVIDER_ID = 11
-MUBI_NAME_MATCH = "mubi"
+# Provider selected by default in the UI dropdown (TMDB provider id).
+# 11 = Mubi. The full service list is built dynamically from your watchlist.
+DEFAULT_SERVICE_ID = 11
 
 
 def tmdb_configured() -> bool:

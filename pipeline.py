@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import db
 import letterboxd
 import tmdb
-from config import LETTERBOXD_USERNAME, REGION
+from config import LETTERBOXD_USERNAME
 
 # How many films to enrich concurrently. Kept modest to stay polite to
 # Letterboxd (one film-page fetch each); TMDB tolerates far more.
@@ -53,15 +53,13 @@ def _enrich_one(slug: str):
         if not tmdb_id:
             db.save_enrichment(slug, error="No TMDB id on Letterboxd page")
             return
-        details = tmdb.get_details_and_providers(tmdb_id, tmdb_type, REGION)
+        details = tmdb.get_details_and_providers(tmdb_id, tmdb_type)
         db.save_enrichment(
             slug,
             tmdb_id=tmdb_id,
             tmdb_type=tmdb_type,
             poster_path=details["poster_path"],
-            region=REGION,
-            providers=details["providers"],
-            on_mubi=tmdb.is_on_mubi(details["providers"]),
+            providers_by_region=details["providers_by_region"],
         )
     except Exception as exc:  # noqa: BLE001 - record and continue
         db.save_enrichment(slug, error=f"{type(exc).__name__}: {exc}")
