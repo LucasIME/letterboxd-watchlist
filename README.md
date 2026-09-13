@@ -18,11 +18,12 @@ is easy.
 
 ## Setup
 
+This project uses [uv](https://docs.astral.sh/uv/). Dependencies are declared in
+`pyproject.toml` and pinned in `uv.lock`.
+
 ```bash
 cd letterboxd-watchlist
-python3 -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
+uv sync            # creates .venv and installs deps from the lockfile
 
 cp .env.example .env
 # Edit .env: paste your TMDB API Read Access Token (or v3 API key).
@@ -35,7 +36,7 @@ region for availability (`REGION`, e.g. `GB`, `US`, `BR`, `PT`).
 ## Run
 
 ```bash
-python app.py
+uv run app.py
 ```
 
 Open http://127.0.0.1:5000. On first load it automatically scrapes the
