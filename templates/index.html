@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{ username }}'s watchlist · Mubi filter</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body data-tmdb-ok="{{ 'yes' if tmdb_ok else 'no' }}">
+  <header>
+    <div class="header-row">
+      <h1><a href="https://letterboxd.com/{{ username }}/watchlist/" target="_blank" rel="noopener">{{ username }}</a>’s watchlist</h1>
+      <button id="refresh" title="Re-scrape watchlist and refresh availability">Refresh</button>
+    </div>
+    <div class="controls">
+      <input id="search" type="search" placeholder="Search titles…" autocomplete="off" />
+      <label class="toggle">
+        <input id="mubi-only" type="checkbox" />
+        <span>Only on Mubi ({{ region }})</span>
+      </label>
+      <span id="count" class="count"></span>
+    </div>
+    <div id="status" class="status"></div>
+    <div id="progress-wrap" class="progress-wrap hidden">
+      <div id="progress-bar" class="progress-bar"></div>
+    </div>
+  </header>
+
+  <main>
+    <div id="grid" class="grid"></div>
+    <p id="empty" class="empty hidden"></p>
+  </main>
+
+  <script src="{{ url_for('static', filename='app.js') }}"></script>
+</body>
+</html>
